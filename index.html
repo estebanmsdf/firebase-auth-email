@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web de Prueba con Firebase</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 40px auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        input { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+        button { padding: 10px 15px; color: white; border: none; cursor: pointer; margin-top: 5px; }
+        .btn-blue { background-color: #007bff; }
+        .btn-green { background-color: #28a745; }
+        .btn-red { background-color: #dc3545; }
+        .hidden { display: none; }
+        .box { border: 1px solid #ccc; padding: 20px; border-radius: 5px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <h1>Mi Web de Prueba</h1>
+
+    <div id="auth-section" class="box">
+        <h2>Registrarse / Iniciar Sesión</h2>
+        <div class="form-group">
+            <label>Email:</label>
+            <input type="email" id="email" placeholder="correo@ejemplo.com">
+        </div>
+        <div class="form-group">
+            <label>Contraseña:</label>
+            <input type="password" id="password" placeholder="Mínimo 6 caracteres">
+        </div>
+        <button id="btn-register" class="btn-blue">Registrarse</button>
+        <button id="btn-login" class="btn-green">Iniciar Sesión</button>
+    </div>
+
+    <div id="profile-section" class="box hidden">
+        <h2>Tu Perfil</h2>
+        <p><strong>UID:</strong> <span id="user-uid"></span></p>
+        <p><strong>Email:</strong> <span id="user-email"></span></p>
+        
+        <div class="form-group">
+            <label>Nombre de Usuario:</label>
+            <input type="text" id="username" placeholder="Tu apodo o nombre">
+        </div>
+        <button id="btn-save-profile" class="btn-blue">Guardar Perfil</button>
+        <hr>
+        <button id="btn-logout" class="btn-red">Cerrar Sesión</button>
+    </div>
+
+    <script type="module">
+        // 1. Importaciones correctas para el navegador (CDN de Firebase)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // 2. Tus credenciales reales integradas en la estructura original
+        const firebaseConfig = {
+            apiKey: "AIzaSyDY5-177ECiKOGquv3-bVSaMJsVZIWA4ho",
+            authDomain: "fir-auth-email-a6ea8.firebaseapp.com",
+            projectId: "fir-auth-email-a6ea8",
+            storageBucket: "fir-auth-email-a6ea8.firebasestorage.app",
+            messagingSenderId: "456158057568",
+            appId: "1:456158057568:web:f0bf8aa116270ef7ae9f05"
+        };
+
+        // 3. Inicialización usando las credenciales anteriores
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Referencias del DOM
+        const authSection = document.getElementById('auth-section');
+        const profileSection = document.getElementById('profile-section');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const usernameInput = document.getElementById('username');
+        const userUidSpan = document.getElementById('user-uid');
+        const userEmailSpan = document.getElementById('user-email');
+
+        // Registro
+        document.getElementById('btn-register').addEventListener('click', async () => {
+            try {
+                await createUserWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+                alert("¡Usuario registrado con éxito!");
+            } catch (error) {
+                alert("Error al registrarse: " + error.message);
+            }
+        });
+
+        // Inicio de sesión
+        document.getElementById('btn-login').addEventListener('click', async () => {
+            try {
+                await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+            } catch (error) {
+                alert("Error al iniciar sesión: " + error.message);
+            }
+        });
+
+        // Cerrar sesión
+        document.getElementById('btn-logout').addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                alert("Sesión cerrada");
+            } catch (error) {
+                console.error(error);
+            }
+        });
+
+        // Observador del estado del usuario
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                authSection.classList.add('hidden');
+                profileSection.classList.remove('hidden');
+                userUidSpan.innerText = user.uid;
+                userEmailSpan.innerText = user.email;
+
+                // Recuperar datos existentes de Firestore
+                const docRef = doc(db, "usuarios", user.uid);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    usernameInput.value = docSnap.data().username;
+                } else {
+                    usernameInput.value = "";
+                }
+            } else {
+                authSection.classList.remove('hidden');
+                profileSection.classList.add('hidden');
+            }
+        });
+
+        // Guardar o actualizar datos de perfil
+        document.getElementById('btn-save-profile').addEventListener('click', async () => {
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+                try {
+                    await setDoc(doc(db, "usuarios", currentUser.uid), {
+                        username: usernameInput.value,
+                        email: currentUser.email
+                    });
+                    alert("¡Perfil guardado correctamente!");
+                } catch (error) {
+                    alert("Error al guardar: " + error.message);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
